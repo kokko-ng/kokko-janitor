@@ -1,0 +1,18 @@
+{
+  "name": "kokko-ng-kokko-janitor",
+  "description": "Worktree-based codebase clean-up for Claude Code: parallel lint fixes plus metric-ranked, agent-judged god-module refactoring.",
+  "owner": {
+    "name": "kokko-ng"
+  },
+  "plugins": [
+    {
+      "name": "kokko-janitor",
+      "source": "./plugins/kokko-janitor/",
+      "description": "Worktree-based codebase clean-up: parallel lint fixes plus metric-ranked, agent-judged god-module refactoring with a quality ratchet.",
+      "version": "1.0.0",
+      "author": {
+        "name": "kokko-ng"
+      }
+    }
+  ]
+}
