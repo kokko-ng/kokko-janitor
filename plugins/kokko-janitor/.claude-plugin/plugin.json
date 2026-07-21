@@ -1,6 +1,6 @@
 {
   "name": "kokko-janitor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Worktree-based codebase clean-up: parallel lint fixes plus metric-ranked, agent-judged god-module refactoring with a quality ratchet.",
   "author": {
     "name": "kokko-ng"

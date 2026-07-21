@@ -38,6 +38,8 @@ plugin — install that too, or run with the design layer only.
 
 ```
 /kokko-janitor:janitor                      # lint fixes + design report
+/kokko-janitor:multipass 3 /kokko-janitor:janitor   # 3 fresh-context passes, convergence report
+/kokko-janitor:multipass 2 prompts/deployed-validation.md then 2 prompts/aesthetics.md
 /kokko-janitor:janitor --apply-design       # also apply approved splits
 /kokko-janitor:janitor --no-design          # lint layer only
 /kokko-janitor:janitor --top 5 --max-rounds 3   # deeper, iterative
@@ -53,6 +55,18 @@ python3 plugins/kokko-janitor/scripts/hotspots.py . --scorecard .janitor/scoreca
 
 Stdlib-only Python; needs `git` on PATH. Exit 2 means a scorecard
 regression.
+
+## Multipass
+
+`multipass` runs repeated independent passes of any skill or prompt file
+(sequentially, each in a fresh subagent) and reports convergence: a first
+pass that finds much, a second that finds little, and a third that finds
+nothing is evidence the codebase is actually clean — the same finding
+surviving multiple passes unfixed is evidence of a blocker. Chain targets
+with `then` to run ordered sets, and `--pre '...'` for a one-time setup
+step (e.g. deploy before validating). Pairs with the `tailor` skill from
+kokko-cmds' kokko-validation plugin, which writes repo-specific prompt
+files to `prompts/`.
 
 ## Design principles
 
