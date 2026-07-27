@@ -2,6 +2,7 @@
 name: janitor
 description: Orchestrate lint fixes and god-module refactoring via subagents and git worktrees
 argument-hint: "[target-branch] [--langs py,js,dotnet] [--checks security,types,...] [--no-design] [--top N] [--apply-design] [--max-rounds N]"
+allowed-tools: Bash(git:*), Bash(uv:*), Bash(npm:*), Bash(npx:*), Bash(python3:*), Bash(pytest:*), Task, Read, Write, Edit, Glob, Grep
 ---
 
 # Janitor Skill

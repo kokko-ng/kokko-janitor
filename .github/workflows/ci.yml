@@ -1,0 +1,17 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # The jobs live in kokko-cmds so both marketplace repos run the same checks
+  # instead of one repo having them and the other having none. This repo ships
+  # no hooks, so it skips the bats suite and opts into the Python checks for
+  # scripts/hotspots.py.
+  plugin-repo:
+    uses: kokko-ng/kokko-cmds/.github/workflows/plugin-repo-ci.yml@main
+    with:
+      run-hook-tests: false
+      run-python-checks: true

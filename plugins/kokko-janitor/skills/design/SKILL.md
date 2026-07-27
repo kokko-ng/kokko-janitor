@@ -2,6 +2,7 @@
 name: design
 description: Judge whether a module is a god module and produce (or apply) a gated split plan
 argument-hint: "<module-path> [--apply]"
+allowed-tools: Bash(git:*), Bash(python3:*), Bash(pytest:*), Bash(uv run:*), Task, Read, Write, Edit, Glob, Grep
 ---
 
 # Design Check Skill

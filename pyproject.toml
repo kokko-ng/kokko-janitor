@@ -1,0 +1,13 @@
+# hotspots.py is stdlib-only and ships inside the plugin, so there is no
+# package to build here. This file exists to give ruff and pytest a config
+# root, which CI needs and which nothing previously provided.
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

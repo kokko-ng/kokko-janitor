@@ -45,12 +45,28 @@ def sh(args, cwd):
     return subprocess.run(args, cwd=cwd, capture_output=True, text=True, check=True).stdout
 
 
+def excluded(path, excludes):
+    """True if a repo-relative path matches any exclude glob.
+
+    Matched against a leading-slash form as well as the bare path. `git
+    ls-files` emits `dist/bundle.js` with no leading directory, and the
+    `*/dist/*` style pattern cannot match that -- fnmatch's `*` will happily
+    match an empty string, but only where there is something to match against.
+    Without this a committed root-level dist/, build/ or vendor/ was ranked as
+    if it were source.
+    """
+    return any(
+        fnmatch.fnmatch(path, pat) or fnmatch.fnmatch("/" + path, pat)
+        for pat in excludes
+    )
+
+
 def tracked_source_files(root, excludes):
     out = []
     for path in sh(["git", "ls-files"], root).splitlines():
         if os.path.splitext(path)[1] not in SOURCE_EXTS:
             continue
-        if any(fnmatch.fnmatch(path, pat) for pat in excludes):
+        if excluded(path, excludes):
             continue
         out.append(path)
     return out

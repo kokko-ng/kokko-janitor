@@ -2,6 +2,7 @@
 name: multipass
 description: Run repeated fresh-context passes of a skill or prompt file (or an ordered set), sequentially, and report convergence
 argument-hint: "<N> <skill-or-prompt> [then <N> <skill-or-prompt> ...] [--pre '<step>']"
+allowed-tools: Bash(git:*), Task, Read, Write, Glob, Grep
 ---
 
 # Multipass Skill

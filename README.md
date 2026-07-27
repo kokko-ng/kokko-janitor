@@ -25,7 +25,7 @@ codebase can only get better between runs, and regressions are loud.
 
 ## Install
 
-```
+```text
 /plugin marketplace add kokko-ng/kokko-janitor
 /plugin install kokko-janitor@kokko-ng-kokko-janitor
 ```
@@ -36,7 +36,7 @@ plugin — install that too, or run with the design layer only.
 
 ## Usage
 
-```
+```text
 /kokko-janitor:janitor                      # lint fixes + design report
 /kokko-janitor:multipass 3 /kokko-janitor:janitor   # 3 fresh-context passes, convergence report
 /kokko-janitor:multipass 2 prompts/deployed-validation.md then 2 prompts/aesthetics.md
@@ -48,7 +48,7 @@ plugin — install that too, or run with the design layer only.
 
 The hotspot ranker is a plain script and useful on its own:
 
-```
+```bash
 python3 plugins/kokko-janitor/scripts/hotspots.py . --top 10
 python3 plugins/kokko-janitor/scripts/hotspots.py . --scorecard .janitor/scorecard.json --update
 ```
@@ -85,3 +85,17 @@ files to `prompts/`.
 ## License
 
 MIT
+
+## Development
+
+```bash
+python3 -m pytest -q                      # the ranker test suite
+ruff check plugins/ tests/
+bash scripts/check-marketplace-sync.sh
+bash scripts/bump.sh patch                # minor / major
+pre-commit run --all-files
+```
+
+CI reuses the shared workflow from
+[kokko-cmds](https://github.com/kokko-ng/kokko-cmds/blob/main/.github/workflows/plugin-repo-ci.yml)
+so both marketplace repos run the same checks. See [CHANGELOG.md](CHANGELOG.md).
