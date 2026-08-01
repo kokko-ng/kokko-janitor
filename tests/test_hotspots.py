@@ -52,6 +52,7 @@ def run_script(repo, *args, cwd=None):
         capture_output=True,
         text=True,
         cwd=cwd or repo,
+        check=False,
     )
     report = json.loads(proc.stdout) if proc.stdout.strip() else {}
     return proc, report

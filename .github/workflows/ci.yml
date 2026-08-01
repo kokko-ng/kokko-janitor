@@ -35,7 +35,7 @@ jobs:
           python-version: "3.12"
       - name: Lint and check formatting of plugin scripts
         run: |
-          pip install ruff
+          pip install ruff==0.15.8  # keep in lock-step with ruff-pre-commit rev in .pre-commit-config.yaml
           ruff check plugins/ tests/
           ruff format --check plugins/ tests/
 
