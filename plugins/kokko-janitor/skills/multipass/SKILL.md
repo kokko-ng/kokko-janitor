@@ -1,6 +1,6 @@
 ---
 name: multipass
-description: Run repeated fresh-context passes of a skill or prompt file (or an ordered set), sequentially, and report convergence
+description: Run repeated fresh-context passes of a skill or prompt file (or an ordered set), sequentially, and report convergence. Use when the user asks to run something multiple times, verify a clean-up converged, or double-check a codebase with independent passes.
 argument-hint: "<N> <skill-or-prompt> [then <N> <skill-or-prompt> ...] [--pre '<step>']"
 ---
 
@@ -33,14 +33,14 @@ Run `--pre` first if given. Then, for each pass in order:
 
 1. Spawn ONE new subagent with no memory of previous passes. Brief it
    with: the target to run (skill invocation or "follow all directions in
-   <file>"), permission to spawn its own subagents as the target
+   `<file>`"), permission to spawn its own subagents as the target
    requires, and the ground rules below.
 2. Wait for the pass to finish completely before starting the next.
    Never run passes in parallel — later passes must see the repo state
    earlier passes produced.
 3. After each pass, verify repo hygiene before continuing: tracked tree
-   state, no leftover worktrees or temporary branches. Fix or report
-   before the next pass.
+   state, no leftover worktrees or temporary branches. Verify and
+   report; never tidy — a dirty tree that is not yours stops the run.
 
 ### Ground rules to pass to every subagent, verbatim
 

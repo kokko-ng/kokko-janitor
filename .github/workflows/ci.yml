@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Covers markdownlint, shellcheck, and whitespace hygiene.
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run pre-commit on all files
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files --show-diff-on-failure
+
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Lint and check formatting of plugin scripts
+        run: |
+          pip install ruff==0.15.8  # keep in lock-step with ruff-pre-commit rev in .pre-commit-config.yaml
+          ruff check plugins/ tests/
+          ruff format --check plugins/ tests/
+
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run test suite
+        run: |
+          pip install pytest
+          pytest tests/ -q
+
+  validate-plugins:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Validate every plugin manifest
+        run: |
+          status=0
+          for dir in plugins/*/; do
+            echo "::group::claude plugin validate $dir"
+            claude plugin validate "$dir" || status=1
+            echo "::endgroup::"
+          done
+          exit "$status"
+      - name: Check marketplace.json is in sync with plugin manifests
+        run: bash scripts/check-marketplace-sync.sh

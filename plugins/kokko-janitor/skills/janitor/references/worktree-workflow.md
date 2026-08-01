@@ -34,7 +34,7 @@ Check which languages are present:
 [ -f package.json ] && echo "js"
 
 # .NET
-ls *.csproj *.sln 2>/dev/null && echo "dotnet"
+[ -n "$(git ls-files '*.csproj' '*.sln')" ] && echo "dotnet"
 ```
 
 ## Step 3: Create Worktrees
@@ -43,22 +43,29 @@ For each language + check combination:
 
 ```bash
 # Example for Python security
-git worktree add $WORKTREE_BASE/py-security -b janitor/py-security
+git worktree add "$WORKTREE_BASE/py-security" -b janitor/py-security
 
 # Example for JavaScript types
-git worktree add $WORKTREE_BASE/js-types -b janitor/js-types
+git worktree add "$WORKTREE_BASE/js-types" -b janitor/js-types
 ```
 
 Create all needed worktrees upfront to allow parallel execution.
 
 ## Step 4: Launch Subagents
 
-Spawn one subagent per worktree using the Task tool:
+Spawn one subagent per worktree using the Task tool. A subagent's
+working directory RESETS between Bash calls — never rely on `cd`
+persisting. Brief each subagent to use absolute paths everywhere and
+`git -C "$WORKTREE"` for every git command:
 
 ```text
 Task: Run /security py in worktree
-Prompt: Navigate to $WORKTREE_BASE/py-security and run /security py
-        Fix ALL issues found, commit incrementally
+Prompt: WORKTREE=$WORKTREE_BASE/py-security (absolute path — your cwd
+        resets between Bash calls, so never rely on cd; reference files
+        by absolute path under "$WORKTREE" and run every git command as
+        git -C "$WORKTREE" ...). Run /security py against that
+        worktree. Fix ALL issues found, commit incrementally with
+        git -C "$WORKTREE" commit.
 ```
 
 Launch all subagents in parallel for maximum efficiency.
@@ -67,7 +74,8 @@ Launch all subagents in parallel for maximum efficiency.
 
 Track subagent completion:
 
-- Use TaskList to monitor active agents
+- Collect each subagent's final report as it finishes — that report is
+  the only record of what the agent found, fixed, and committed
 - Note any failures or blockers
 - Count issues fixed per agent
 
@@ -116,15 +124,19 @@ If merge conflicts occur:
 
 ```bash
 # Remove all worktrees
-for dir in $WORKTREE_BASE/*; do
+for dir in "$WORKTREE_BASE"/*; do
   git worktree remove "$dir" --force
 done
 
-# Remove base directory
-rmdir $WORKTREE_BASE
+# Remove base directory. rmdir refuses a non-empty directory — if it
+# fails, something (a leftover worktree, a stray file) survived: inspect
+# and report rather than force-deleting blindly.
+rmdir "$WORKTREE_BASE" || echo "warning: $WORKTREE_BASE not empty — inspect before deleting"
 
-# Delete temporary branches
-git branch --list 'janitor/*' | xargs git branch -d
+# Delete temporary branches. --format strips the current-branch '*'
+# marker, and -D is required: janitor/* branches were merged --no-ff so
+# -d considers them unmerged and refuses.
+git branch --list 'janitor/*' --format='%(refname:short)' | xargs -r git branch -D
 ```
 
 ## Step 8: Final Validation
