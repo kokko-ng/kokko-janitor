@@ -25,7 +25,7 @@ codebase can only get better between runs, and regressions are loud.
 
 ## Install
 
-```
+```text
 /plugin marketplace add kokko-ng/kokko-janitor
 /plugin install kokko-janitor@kokko-ng-kokko-janitor
 ```
@@ -36,7 +36,7 @@ plugin — install that too, or run with the design layer only.
 
 ## Usage
 
-```
+```text
 /kokko-janitor:janitor                      # lint fixes + design report
 /kokko-janitor:multipass 3 /kokko-janitor:janitor   # 3 fresh-context passes, convergence report
 /kokko-janitor:multipass 2 prompts/deployed-validation.md then 2 prompts/aesthetics.md
@@ -46,15 +46,23 @@ plugin — install that too, or run with the design layer only.
 /kokko-janitor:design src/big_module.py     # judge one module directly
 ```
 
-The hotspot ranker is a plain script and useful on its own:
+The hotspot ranker is a plain script and useful on its own. With the
+plugin installed:
 
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/hotspots.py" . --top 10
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/hotspots.py" . --scorecard .janitor/scorecard.json --update
 ```
-python3 plugins/kokko-janitor/scripts/hotspots.py . --top 10
-python3 plugins/kokko-janitor/scripts/hotspots.py . --scorecard .janitor/scorecard.json --update
-```
+
+(When developing in this repo, the same script lives at
+`plugins/kokko-janitor/scripts/hotspots.py`.)
 
 Stdlib-only Python; needs `git` on PATH. Exit 2 means a scorecard
 regression.
+
+Note: for god-module work, prefer the `design` skill here over
+kokko-code-quality's `/split` — they cover the same ground, and `design`
+adds the metric evidence, judge panel, and apply gates.
 
 ## Multipass
 
