@@ -137,9 +137,9 @@ def py_structure(root, path):
 
 def module_name(path):
     """Dotted module name for a repo-relative Python path."""
-    mod = path[:-3] if path.endswith(".py") else path
+    mod = path.removesuffix(".py")
     mod = mod.replace("/", ".")
-    return mod[: -len(".__init__")] if mod.endswith(".__init__") else mod
+    return mod.removesuffix(".__init__")
 
 
 def module_keys(path):

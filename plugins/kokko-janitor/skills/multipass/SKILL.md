@@ -33,7 +33,7 @@ Run `--pre` first if given. Then, for each pass in order:
 
 1. Spawn ONE new subagent with no memory of previous passes. Brief it
    with: the target to run (skill invocation or "follow all directions in
-   <file>"), permission to spawn its own subagents as the target
+   `<file>`"), permission to spawn its own subagents as the target
    requires, and the ground rules below.
 2. Wait for the pass to finish completely before starting the next.
    Never run passes in parallel — later passes must see the repo state
