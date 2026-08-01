@@ -1,6 +1,6 @@
 ---
 name: janitor
-description: Orchestrate lint fixes and god-module refactoring via subagents and git worktrees
+description: Orchestrate lint fixes and god-module refactoring via subagents and git worktrees. Use when the user asks to clean up, tidy, de-lint, or refactor a codebase, mentions god modules or hotspots, or wants code quality fixed across the whole repo.
 argument-hint: "[target-branch] [--langs py,js,dotnet] [--checks security,types,...] [--no-design] [--top N] [--apply-design] [--max-rounds N]"
 ---
 
@@ -25,7 +25,8 @@ Parse `$ARGUMENTS` for:
 - `--langs` - Languages to check (default: auto-detect all present)
 - `--checks` - Lint checks to run (default: all)
 - `--no-design` - Skip the design layer entirely
-- `--top N` - Design candidates to judge (default: 3)
+- `--top N` - Design candidates to judge (default: 3). This slices the
+  Phase 0 output; the hotspot script itself always runs with `--top 20`
 - `--apply-design` - Apply approved design refactors. Without this flag the
   design layer is REPORT-ONLY: it produces split plans, never edits
 - `--max-rounds N` - Convergence rounds (default: 1; each extra round
@@ -55,9 +56,13 @@ strategy, conflict handling, and error recovery.
 ### Phase 0: Hotspot Ranking (deterministic)
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/hotspots.py" . --top <N> \
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/hotspots.py" . --top 20 \
   --scorecard .janitor/scorecard.json
 ```
+
+Always run with `--top 20`; the user-facing `--top N` argument (default
+3) selects how many of the returned `candidate: true` files Phase 2
+judges.
 
 Produces a ranked list of god-module candidates (LOC, defs, fan-in/out,
 churn, composite score) plus cross-package temporal-coupling pairs, and
@@ -82,20 +87,29 @@ Keep the JSON output; it feeds Phase 2 prompts and the final report.
 
 ### Phase 2: Design Layer
 
-Skip if `--no-design`, or if Phase 0 found no file scoring above 0.5.
+Skip if `--no-design`, or if Phase 0 found no file with
+`candidate: true` (the absolute loc/defs gate — the normalized score
+only orders candidates and always puts some file near 1.0).
 
-1. For each of the top N candidates, create a worktree + branch
+1. For each of the first N `candidate: true` files (N from `--top`,
+   default 3), create a worktree + branch
    (`janitor/design-<module>`) and spawn a subagent running
    `/design <path>` with the candidate's metric evidence pasted into the
    prompt. The design skill produces a verdict (`god-module` or
-   `cohesive`) and, for god modules, a concrete split plan. "Cohesive — no
+   `cohesive`) and, for god modules, a concrete split plan written to
+   `.janitor/design-plan-<stem>.md` inside the worktree. "Cohesive — no
    action" is a valid and common outcome.
 2. **Judge panel**: for each `god-module` verdict, spawn 3 independent
    subagents that each read the module and the proposed plan and vote
    ACCEPT or REJECT ("would this split genuinely improve the design, or is
    it churn?"). Majority rules. Rejected plans are still included in the
    final report, marked rejected.
-3. Only with `--apply-design`: for each ACCEPTED plan, the design worktree
+3. **Collect plans BEFORE any cleanup**: copy every
+   `.janitor/design-plan-*.md` from the design worktrees into the main
+   checkout's `.janitor/` directory. `git worktree remove --force`
+   destroys worktree contents — a plan not copied out first is lost. The
+   copies are gitignored untracked artifacts; leave them for the user.
+4. Only with `--apply-design`: for each ACCEPTED plan, the design worktree
    subagent applies it under the design skill's apply-mode gates
    (characterization-test coverage, public API preservation, full test
    suite). Without the flag, plans land in the report only.
@@ -121,7 +135,7 @@ Skip if `--no-design`, or if Phase 0 found no file scoring above 0.5.
    `.janitor/scorecard.json` to the new (better) values, and commit the
    scorecard change if the file is tracked or the user wants it tracked.
 2. If `--max-rounds` allows another round AND Phase 2/3 landed changes AND
-   candidates above 0.5 remain, loop back to Phase 0. Stop when a round
+   `candidate: true` files remain, loop back to Phase 0. Stop when a round
    lands nothing (converged).
 
 ### Cleanup
@@ -132,7 +146,8 @@ branches with zero commits are simply deleted).
 ## Final Report
 
 - Per-check lint results (including "clean")
-- Hotspot top-N with scores; scorecard delta (improved / regressed / held)
+- Hotspot top 20 with scores and candidate flags; scorecard delta
+  (improved / regressed / held)
 - Design verdicts, judge votes, plans (applied or proposed), rejections
 - Temporal-coupling pairs worth a human look
 - Anything skipped and why

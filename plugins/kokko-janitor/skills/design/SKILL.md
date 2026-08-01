@@ -1,6 +1,6 @@
 ---
 name: design
-description: Judge whether a module is a god module and produce (or apply) a gated split plan
+description: Judge whether a module is a god module and produce (or apply) a gated split plan. Use when the user asks whether a file should be split, mentions a god module, god class, oversized module, or hotspot, or wants a refactoring plan for one specific module.
 argument-hint: "<module-path> [--apply]"
 ---
 
@@ -47,7 +47,8 @@ never invent a split to justify the invocation.
 
 ## Step 3: Split Plan (god-module only)
 
-Write `design-plan-<module-stem>.md` in the repo root of the worktree:
+Write `.janitor/design-plan-<module-stem>.md` (relative to the repo root
+of the worktree; create `.janitor/` if needed):
 
 - **Responsibilities found**, one line each
 - **Proposed modules**: name, responsibility, exact list of
@@ -59,7 +60,10 @@ Write `design-plan-<module-stem>.md` in the repo root of the worktree:
 - **Risk notes**: import cycles the split could create, test coverage of
   the moved code, anything the judges should scrutinize
 
-Do not edit any source file in report-only mode.
+Do not edit any source file in report-only mode. The plan file itself is
+the ONE permitted untracked artifact of a report-only run: `.janitor/`
+plan files are gitignored, do not count as a dirty tree, and must never
+be committed or deleted to "clean up" — the orchestrator collects them.
 
 ## Step 4: Apply (only with `--apply`)
 
