@@ -52,6 +52,11 @@ DEFAULT_EXCLUDES = [
     "*_test.*",
     "*.test.*",
     "*.spec.*",
+    "*.stories.*",
+    "__tests__/*",
+    "*/__tests__/*",
+    "spec/*",
+    "*/spec/*",
     "conftest.py",
     "*/conftest.py",
     "*/migrations/*",
@@ -67,17 +72,25 @@ DEFAULT_EXCLUDES = [
 # src/pkg/mod.py also resolves imports written as `import pkg.mod`.
 STRIP_ROOTS = ("src", "lib", "app")
 SIGNALS = ("loc", "defs", "fan_in", "fan_out", "churn")
+SCORECARD_KEYS = ("max_file_loc", "max_fan_in", "max_defs_per_file")
 
 
-def sh(args, cwd):
+def sh(args: list[str], cwd: str) -> str:
+    """Run a command and return its stdout, raising on non-zero exit."""
     return subprocess.run(
         args, cwd=cwd, capture_output=True, text=True, check=True
     ).stdout
 
 
-def tracked_source_files(root, excludes):
+def tracked_source_files(root: str, excludes: list[str]) -> list[str]:
+    """List tracked files with a source extension, minus excluded globs."""
     out = []
-    for path in sh(["git", "-c", "core.quotepath=off", "ls-files"], root).splitlines():
+    # Explicit "\n" split, not splitlines(): core.quotepath=off makes git
+    # emit raw filename bytes, and splitlines() also breaks on \x0b, \x0c,
+    # \x85 etc., which would bisect a filename containing them.
+    for path in sh(["git", "-c", "core.quotepath=off", "ls-files"], root).split("\n"):
+        if not path:
+            continue
         if os.path.splitext(path)[1] not in SOURCE_EXTS:
             continue
         if any(fnmatch.fnmatch(path, pat) for pat in excludes):
@@ -86,7 +99,8 @@ def tracked_source_files(root, excludes):
     return out
 
 
-def count_loc(root, path):
+def count_loc(root: str, path: str) -> int:
+    """Count non-blank lines; unreadable files count 0 rather than aborting."""
     try:
         with open(os.path.join(root, path), encoding="utf-8", errors="replace") as f:
             return sum(1 for line in f if line.strip())
@@ -94,7 +108,7 @@ def count_loc(root, path):
         return 0
 
 
-def py_structure(root, path):
+def py_structure(root: str, path: str) -> tuple[int, set[str]]:
     """Return (defs, imported module names) for a Python file.
 
     Relative imports are resolved against the file's own package, so
@@ -135,14 +149,14 @@ def py_structure(root, path):
     return defs, imports
 
 
-def module_name(path):
+def module_name(path: str) -> str:
     """Dotted module name for a repo-relative Python path."""
     mod = path.removesuffix(".py")
     mod = mod.replace("/", ".")
     return mod.removesuffix(".__init__")
 
 
-def module_keys(path):
+def module_keys(path: str) -> list[str]:
     """All dotted keys a path should be indexed under.
 
     src/pkg/mod.py is importable as pkg.mod, so index it under both
@@ -156,8 +170,14 @@ def module_keys(path):
 
 
 def churn_and_coupling(
-    root, files, since, churn_top, min_shared, min_strength, top_pairs
-):
+    root: str,
+    files: list[str],
+    since: str | None,
+    churn_top: int,
+    min_shared: int,
+    min_strength: float,
+    top_pairs: int,
+) -> tuple[dict[str, int], list[dict[str, object]]]:
     """Commits-touching-file counts, plus co-change pairs for high-churn files.
 
     Commit boundaries use an explicit NUL sentinel (never "line looks like a
@@ -182,12 +202,15 @@ def churn_and_coupling(
     current = set()
     renamed_to = {}  # historical path -> present-day path
 
-    def resolve(path):
+    def resolve(path: str) -> str:
         return renamed_to.get(path, path)
 
     # git log walks newest to oldest, so a rename old->new seen now means
     # older commits touching `old` belong to new's present-day path.
-    for line in sh(args, root).splitlines():
+    # Explicit "\n" split, not splitlines(): core.quotepath=off makes git
+    # emit raw filename bytes, and splitlines() also breaks on \x0b, \x0c,
+    # \x85 etc., which would bisect a filename containing them.
+    for line in sh(args, root).split("\n"):
         if line.startswith("\x00"):
             if current:
                 commits.append(current)
@@ -197,11 +220,12 @@ def churn_and_coupling(
             continue
         parts = line.split("\t")
         status = parts[0]
-        if status[:1] in ("R", "C") and len(parts) == 3:
+        # Copy statuses (C...) never appear: -C/--find-copies is not passed
+        # to git log above, so copied files are not detected as related.
+        if status[:1] == "R" and len(parts) == 3:
             old, new = parts[1], parts[2]
             present = resolve(new)
-            if status[:1] == "R":
-                renamed_to[old] = present
+            renamed_to[old] = present
             if present in fileset:
                 churn[present] += 1
                 current.add(present)
@@ -220,25 +244,45 @@ def churn_and_coupling(
             # Same-directory co-change is expected; cross-package coupling is the smell.
             if os.path.dirname(a) != os.path.dirname(b):
                 pairs[(a, b)] += 1
-    coupling = [
-        {
-            "files": [a, b],
-            "co_changes": n,
-            "strength": round(n / min(churn[a], churn[b]), 2),
-        }
-        for (a, b), n in pairs.items()
-        if n >= min_shared and n / min(churn[a], churn[b]) >= min_strength
-    ]
-    coupling.sort(key=lambda c: (-c["strength"], -c["co_changes"]))
+    coupling = []
+    for (a, b), n in pairs.items():
+        if n < min_shared:
+            continue
+        strength = n / min(churn[a], churn[b])
+        if strength < min_strength:
+            continue
+        coupling.append(
+            {"files": [a, b], "co_changes": n, "strength": round(strength, 2)}
+        )
+    # `files` as the final key keeps ties deterministic across runs.
+    coupling.sort(key=lambda c: (-c["strength"], -c["co_changes"], c["files"]))
     return churn, coupling[:top_pairs]
 
 
-def analyse(root, excludes, since, opts):
+def analyse(
+    root: str, excludes: list[str], since: str | None, opts: argparse.Namespace
+) -> dict[str, list[dict[str, object]]]:
+    """Collect all signals for every source file and rank by composite score.
+
+    Every row carries the full five-signal vector (0-filled where a signal
+    does not apply, e.g. defs/fan-in/fan-out for non-Python files) so
+    consumers that paste rows as evidence always see a stable schema.
+    """
     files = tracked_source_files(root, excludes)
     if not files:
         return {"files": [], "coupling": []}
 
-    rows = {p: {"path": p, "loc": count_loc(root, p)} for p in files}
+    rows = {
+        p: {
+            "path": p,
+            "loc": count_loc(root, p),
+            "defs": 0,
+            "fan_in": 0,
+            "fan_out": 0,
+            "churn": 0,
+        }
+        for p in files
+    }
 
     imports_of = {}
     for p in files:
@@ -290,31 +334,58 @@ def analyse(root, excludes, since, opts):
         rows[p]["churn"] = churn.get(p, 0)
 
     # Fixed signal vector, 0-filled: comparable ranks across languages.
-    peaks = {s: max((r.get(s, 0) for r in rows.values()), default=0) for s in SIGNALS}
+    peaks = {s: max((r[s] for r in rows.values()), default=0) for s in SIGNALS}
     for r in rows.values():
-        total = sum(r.get(s, 0) / peaks[s] for s in SIGNALS if peaks[s] > 0)
+        total = sum(r[s] / peaks[s] for s in SIGNALS if peaks[s] > 0)
         r["score"] = round(total / len(SIGNALS), 3)
         # Absolute gate — the normalised score orders candidates only.
         r["candidate"] = (
-            r["loc"] >= opts.candidate_loc or r.get("defs", 0) >= opts.candidate_defs
+            r["loc"] >= opts.candidate_loc or r["defs"] >= opts.candidate_defs
         )
 
-    ranked = sorted(rows.values(), key=lambda r: -r["score"])
+    # Path as secondary key keeps equal-score ordering deterministic.
+    ranked = sorted(rows.values(), key=lambda r: (-r["score"], r["path"]))
     return {"files": ranked, "coupling": coupling}
 
 
-def ratchet(report, path, update):
+def load_baseline(path: str) -> dict[str, int | float]:
+    """Load and validate the scorecard baseline, or {} when absent.
+
+    A malformed scorecard (hand-edited, merge-conflicted) must fail with a
+    clear message naming the file — not an AttributeError/TypeError
+    traceback from deep inside the ratchet comparison.
+    """
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        baseline = json.load(f)
+    if not isinstance(baseline, dict):
+        sys.exit(
+            f"error: scorecard {path} must contain a JSON object, "
+            f"got {type(baseline).__name__}"
+        )
+    for key in SCORECARD_KEYS:
+        value = baseline.get(key)
+        # bool is an int subclass, but `true` here means a corrupted file.
+        if value is not None and (
+            isinstance(value, bool) or not isinstance(value, (int, float))
+        ):
+            sys.exit(f"error: scorecard {path}: {key} must be a number, got {value!r}")
+    return baseline
+
+
+def ratchet(
+    report: dict[str, list[dict[str, object]]], path: str, update: bool
+) -> tuple[dict[str, int], dict[str, int | float], dict[str, tuple[int | float, int]]]:
     """Compare absolute structural metrics against the stored baseline."""
-    pyfiles = [r for r in report["files"] if "defs" in r] or report["files"]
+    # Rows always carry the full signal vector (0-filled for non-Python
+    # files), so the maxima over all files equal the maxima over Python ones.
     current = {
         "max_file_loc": max((r["loc"] for r in report["files"]), default=0),
-        "max_fan_in": max((r.get("fan_in", 0) for r in pyfiles), default=0),
-        "max_defs_per_file": max((r.get("defs", 0) for r in pyfiles), default=0),
+        "max_fan_in": max((r["fan_in"] for r in report["files"]), default=0),
+        "max_defs_per_file": max((r["defs"] for r in report["files"]), default=0),
     }
-    baseline = {}
-    if os.path.exists(path):
-        with open(path, encoding="utf-8") as f:
-            baseline = json.load(f)
+    baseline = load_baseline(path)
 
     regressions = {
         k: (baseline[k], v)
@@ -338,7 +409,8 @@ def ratchet(report, path, update):
     return current, baseline, regressions
 
 
-def main():
+def main() -> None:
+    """CLI entry point: analyse the repo, print JSON, apply the ratchet."""
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("root", nargs="?", default=".", help="repo root (default: cwd)")
     ap.add_argument("--top", type=int, default=10, help="files to report (default 10)")
@@ -396,10 +468,14 @@ def main():
         help="tighten the scorecard to current values (no-op on regression)",
     )
     args = ap.parse_args()
+    if args.update and not args.scorecard:
+        ap.error("--update requires --scorecard")
 
     root = os.path.abspath(args.root)
     try:
         sh(["git", "rev-parse", "--git-dir"], root)
+    except FileNotFoundError:
+        sys.exit("error: git not found on PATH")
     except subprocess.CalledProcessError as e:
         sys.exit(f"error: git cannot read {root}: {e.stderr.strip()}")
 
@@ -412,7 +488,15 @@ def main():
     }
 
     exit_code = 0
-    if args.scorecard:
+    if args.scorecard and not report["files"]:
+        # An empty analysis (wrong root, over-broad excludes) would ratchet
+        # every baseline to zero and make all future legitimate runs fail;
+        # never let a zero-file run touch or judge the scorecard.
+        print(
+            "warning: no source files matched; skipping scorecard check and update",
+            file=sys.stderr,
+        )
+    elif args.scorecard:
         scorecard = args.scorecard
         if not os.path.isabs(scorecard):
             scorecard = os.path.join(root, scorecard)
@@ -435,6 +519,10 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except FileNotFoundError:
+        # Reached when git vanishes after the initial rev-parse probe (or a
+        # later git subcommand is missing); keep the same one-line message.
+        sys.exit("error: git not found on PATH")
     except subprocess.CalledProcessError as e:
         cmd = " ".join(e.cmd) if isinstance(e.cmd, (list, tuple)) else str(e.cmd)
         sys.exit(f"error: command failed ({cmd}): {(e.stderr or '').strip()}")
