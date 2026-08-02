@@ -1,5 +1,35 @@
+# OS cruft
 .DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Python
 __pycache__/
-.ruff_cache/
+*.py[cod]
+.venv/
+venv/
 .pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+
+# Tool caches
+.pre-commit-cache/
+.cache/
+
+# Editors
+.idea/
+*.swp
+*.swo
+
+# Local scratch
+tmp/
+*.tmp
+
+# Janitor report-only artifacts (design plans stay untracked by design;
+# the scorecard is NOT listed here because it may be tracked on purpose)
 .janitor/design-plan-*.md
