@@ -1,7 +1,6 @@
 ---
 name: design
-description: Judge whether a module is a god module and produce (or apply) a gated split plan. Use when the user asks whether a file should be split, mentions a god module, god class, oversized module, or hotspot, or wants a refactoring plan for one specific module.
-argument-hint: "<module-path> [--apply]"
+description: Judge whether a module is a god module and produce (or apply) a gated split plan. Use when the user asks whether a file should be split, mentions a god module, god class, oversized module, or hotspot, or wants a refactoring plan for one specific module. Pass the path of the module to judge; add --apply to execute the plan behind gates.
 ---
 
 # Design Check Skill
@@ -47,8 +46,20 @@ never invent a split to justify the invocation.
 
 ## Step 3: Split Plan (god-module only)
 
-Write `.janitor/design-plan-<module-stem>.md` (relative to the repo root
-of the worktree; create `.janitor/` if needed):
+Before writing any plan file, make sure `.janitor/` is ignored in the
+TARGET repo — its own `.gitignore` almost certainly does not cover it,
+and an unignored plan file dirties the tree, which collides with the
+orchestrator's clean-tree checks. Append to `.git/info/exclude`
+(non-invasive: never touch the target's tracked `.gitignore`):
+
+```bash
+# --git-path resolves to the shared info/exclude even inside a worktree
+git check-ignore -q .janitor/probe 2>/dev/null || \
+  echo '.janitor/' >> "$(git rev-parse --git-path info/exclude)"
+```
+
+Then write `.janitor/design-plan-<module-stem>.md` (relative to the repo
+root of the worktree; create `.janitor/` if needed):
 
 - **Responsibilities found**, one line each
 - **Proposed modules**: name, responsibility, exact list of
@@ -61,9 +72,10 @@ of the worktree; create `.janitor/` if needed):
   the moved code, anything the judges should scrutinize
 
 Do not edit any source file in report-only mode. The plan file itself is
-the ONE permitted untracked artifact of a report-only run: `.janitor/`
-plan files are gitignored, do not count as a dirty tree, and must never
-be committed or deleted to "clean up" — the orchestrator collects them.
+the ONE permitted untracked artifact of a report-only run: with the
+`.git/info/exclude` entry above in place, `.janitor/` plan files are
+ignored, do not count as a dirty tree, and must never be committed or
+deleted to "clean up" — the orchestrator collects them.
 
 ## Step 4: Apply (only with `--apply`)
 
@@ -75,8 +87,11 @@ Gates, in order — a failed gate means STOP, report, do not proceed:
    commit them separately (`test(design): characterize <module>`), and
    only then refactor.
 2. **API snapshot**: record the module's public surface before touching it
-   (`griffe dump` if available, else `python -c "import m; print(sorted(dir(m)))"`
-   or the language equivalent).
+   (`griffe dump` if available, else `python3 -c "import m; print(sorted(dir(m)))"`
+   or the language equivalent). Caution: importing a module to snapshot
+   its API executes import-time side effects (network calls, file
+   writes, config loading) — run the snapshot inside the worktree's
+   venv, never against your own environment.
 3. **Execute the plan exactly**: move code, keep the original module as a
    re-exporting facade. No behavior changes, no opportunistic edits, no
    renames beyond the plan.
