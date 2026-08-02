@@ -1,7 +1,6 @@
 ---
 name: janitor
-description: Orchestrate lint fixes and god-module refactoring via subagents and git worktrees. Use when the user asks to clean up, tidy, de-lint, or refactor a codebase, mentions god modules or hotspots, or wants code quality fixed across the whole repo.
-argument-hint: "[target-branch] [--langs py,js,dotnet] [--checks security,types,...] [--no-design] [--top N] [--apply-design] [--max-rounds N]"
+description: Orchestrate lint fixes and god-module refactoring via subagents and git worktrees. Use when the user asks to clean up, tidy, de-lint, or refactor a codebase, mentions god modules or hotspots, or wants code quality fixed across the whole repo. Accepts an optional target branch plus --langs (py,js,dotnet), --checks (security,types,...), --no-design, --top N, --apply-design, and --max-rounds N.
 ---
 
 # Janitor Skill
@@ -108,7 +107,9 @@ only orders candidates and always puts some file near 1.0).
    `.janitor/design-plan-*.md` from the design worktrees into the main
    checkout's `.janitor/` directory. `git worktree remove --force`
    destroys worktree contents — a plan not copied out first is lost. The
-   copies are gitignored untracked artifacts; leave them for the user.
+   copies are untracked artifacts ignored via the target repo's
+   `.git/info/exclude` (the design skill ensures that entry exists);
+   leave them for the user.
 4. Only with `--apply-design`: for each ACCEPTED plan, the design worktree
    subagent applies it under the design skill's apply-mode gates
    (characterization-test coverage, public API preservation, full test

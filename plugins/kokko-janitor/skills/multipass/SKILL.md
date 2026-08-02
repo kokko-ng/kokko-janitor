@@ -1,7 +1,6 @@
 ---
 name: multipass
-description: Run repeated fresh-context passes of a skill or prompt file (or an ordered set), sequentially, and report convergence. Use when the user asks to run something multiple times, verify a clean-up converged, or double-check a codebase with independent passes.
-argument-hint: "<N> <skill-or-prompt> [then <N> <skill-or-prompt> ...] [--pre '<step>']"
+description: Run repeated fresh-context passes of a skill or prompt file (or an ordered set), sequentially, and report convergence. Use when the user asks to run something multiple times, verify a clean-up converged, or double-check a codebase with independent passes. Arguments are pass-count/target pairs ("<N> <skill-or-prompt>"), chainable with "then", plus an optional --pre '<step>' one-time setup step.
 ---
 
 # Multipass Skill
