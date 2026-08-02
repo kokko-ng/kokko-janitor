@@ -92,6 +92,13 @@ files to `prompts/`.
   rewrites, no pushes, explicit-file-path staging only. Dirty tree means
   stop and report, not tidy and proceed.
 
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the test suite, pre-commit
+setup, ruff, and the CI-gated release flow. Shared infrastructure
+(release workflow, sync script, pre-commit config) follows
+[kokko-cmds](https://github.com/kokko-ng/kokko-cmds).
+
 ## License
 
 MIT
