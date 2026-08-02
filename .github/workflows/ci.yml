@@ -13,7 +13,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Covers markdownlint, shellcheck, and whitespace hygiene.
+  # Covers ruff lint + format (Dependabot bumps the ruff-pre-commit rev),
+  # markdownlint, shellcheck, JSON validity, shebang/executable-bit
+  # consistency, and whitespace hygiene.
   pre-commit:
     runs-on: ubuntu-latest
     steps:
@@ -23,21 +25,17 @@ jobs:
           python-version: "3.12"
       - name: Run pre-commit on all files
         run: |
-          pip install pre-commit
+          pip install -r requirements-dev.txt
           pre-commit run --all-files --show-diff-on-failure
 
-  ruff:
+  actionlint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Lint GitHub workflow files
+        uses: docker://rhysd/actionlint:1.7.7
         with:
-          python-version: "3.12"
-      - name: Lint and check formatting of plugin scripts
-        run: |
-          pip install ruff==0.15.8  # keep in lock-step with ruff-pre-commit rev in .pre-commit-config.yaml
-          ruff check plugins/ tests/
-          ruff format --check plugins/ tests/
+          args: -color
 
   pytest:
     runs-on: ubuntu-latest
@@ -48,7 +46,7 @@ jobs:
           python-version: "3.12"
       - name: Run test suite
         run: |
-          pip install pytest
+          pip install -r requirements-dev.txt
           pytest tests/ -q
 
   validate-plugins:
