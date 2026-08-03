@@ -1,0 +1,18 @@
+# Ruff configuration only. Deliberately no [project] table: this repo is a
+# plugin marketplace, not an installable package, and requirements-dev.txt
+# remains the single source of dev dependencies (tracked by Dependabot pip).
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E4",  # imports
+    "E7",  # statement/comparison pitfalls
+    "E9",  # syntax/runtime errors
+    "F",   # pyflakes
+    "I",   # import sorting
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "W",   # whitespace/deprecation warnings
+]
