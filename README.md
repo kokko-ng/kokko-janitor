@@ -42,6 +42,8 @@ plugin — install that too, or run with the design layer only.
 /kokko-janitor:multipass 2 prompts/deployed-validation.md then 2 prompts/aesthetics.md
 /kokko-janitor:janitor --apply-design       # also apply approved splits
 /kokko-janitor:janitor --no-design          # lint layer only
+/kokko-janitor:janitor --langs py,js        # limit languages (default: auto-detect)
+/kokko-janitor:janitor --checks security,types   # limit lint checks (default: all)
 /kokko-janitor:janitor --top 5 --max-rounds 3   # deeper, iterative
 /kokko-janitor:design src/big_module.py     # judge one module directly
 ```
@@ -89,6 +91,13 @@ files to `prompts/`.
 - **Git safety.** No stash/reset/restore against dirty trees, no history
   rewrites, no pushes, explicit-file-path staging only. Dirty tree means
   stop and report, not tidy and proceed.
+
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the test suite, pre-commit
+setup, ruff, and the CI-gated release flow. Shared infrastructure
+(release workflow, sync script, pre-commit config) follows
+[kokko-cmds](https://github.com/kokko-ng/kokko-cmds).
 
 ## License
 

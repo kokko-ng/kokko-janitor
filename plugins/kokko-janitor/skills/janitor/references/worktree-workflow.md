@@ -27,14 +27,17 @@ echo "Worktree base: $WORKTREE_BASE"
 Check which languages are present:
 
 ```bash
+# Explicit if-statements, not `[ ... ] || [ ... ] && echo`: that bare
+# compound exits non-zero when the test fails, which aborts a `set -e`
+# shell (and `A || B && C` groups as `(A || B) && C`, not `A || (B && C)`).
 # Python
-[ -f pyproject.toml ] || [ -f setup.py ] && echo "py"
+if [ -f pyproject.toml ] || [ -f setup.py ]; then echo "py"; fi
 
 # JavaScript/TypeScript
-[ -f package.json ] && echo "js"
+if [ -f package.json ]; then echo "js"; fi
 
 # .NET
-[ -n "$(git ls-files '*.csproj' '*.sln')" ] && echo "dotnet"
+if [ -n "$(git ls-files '*.csproj' '*.sln')" ]; then echo "dotnet"; fi
 ```
 
 ## Step 3: Create Worktrees
@@ -135,7 +138,8 @@ rmdir "$WORKTREE_BASE" || echo "warning: $WORKTREE_BASE not empty — inspect be
 
 # Delete temporary branches. --format strips the current-branch '*'
 # marker, and -D is required: janitor/* branches were merged --no-ff so
-# -d considers them unmerged and refuses.
+# -d considers them unmerged and refuses. xargs -r (skip empty input) is
+# a GNU extension; modern BSD/macOS xargs accepts it as a no-op.
 git branch --list 'janitor/*' --format='%(refname:short)' | xargs -r git branch -D
 ```
 
