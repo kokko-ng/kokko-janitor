@@ -39,12 +39,16 @@ Provided by the `kokko-code-quality` plugin (required for the lint layer):
 
 ## Git Safety (non-negotiable, pass to every subagent)
 
+<!-- shared:git-safety-core start -- byte-identical across the janitor, multipass, and design skills; scripts/check-git-rules-sync.sh enforces it -->
+- Never `git stash`, `git clean`, `git reset`, `git rebase`, `git restore`,
+  or `git checkout <ref> -- <path>` to alter or clear working-tree state —
+  uncommitted tracked work destroyed that way is unrecoverable. A dirty tree
+  that is not yours: STOP and report.
+- Stage explicit individual file paths only — never `git add .` and never a
+  directory add (directory adds sweep in untracked files).
+<!-- shared:git-safety-core end -->
 - Dirty working tree at any point where a clean one is required: STOP and
-  report. Never `git stash`, `git reset`, `git restore`, or
-  `git checkout -- <path>` to clear it — uncommitted tracked work destroyed
-  that way is unrecoverable.
-- Stage explicit file paths only. Never `git add .` or a directory add
-  (directory adds sweep in untracked files).
+  report — never clear it yourself.
 - Never push. Never rewrite history.
 
 ## Workflow
@@ -81,7 +85,10 @@ Keep the JSON output; it feeds Phase 2 prompts and the final report.
    subagent runs `/kokko-code-quality:<check> <lang>` (always the
    namespaced form — bare `/<check>` only resolves while no other plugin
    claims the same short name), fixes ALL issues found, commits in
-   small logical `fix(<check>): ...` commits staging explicit file paths.
+   small logical commits staging explicit file paths, using the check
+   skill's own message format (`refactor(complexity): ...`,
+   `fix(types): ...`, `fix(security): ...`, ...) — the skills define it,
+   this orchestrator does not override it.
    A check that finds nothing is a valid result — commit nothing, report
    "clean". Never manufacture work or relax tool configuration to create
    something to fix.
