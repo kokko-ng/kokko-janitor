@@ -102,8 +102,15 @@ Gates, in order — a failed gate means STOP, report, do not proceed:
 
 ## Git Safety
 
-Never `git stash`/`reset`/`restore`/`checkout -- <path>`; never push;
-stage explicit file paths, never `git add .` or directory adds.
+<!-- shared:git-safety-core start -- byte-identical across the janitor, multipass, and design skills; scripts/check-git-rules-sync.sh enforces it -->
+- Never `git stash`, `git clean`, `git reset`, `git rebase`, `git restore`,
+  or `git checkout <ref> -- <path>` to alter or clear working-tree state —
+  uncommitted tracked work destroyed that way is unrecoverable. A dirty tree
+  that is not yours: STOP and report.
+- Stage explicit individual file paths only — never `git add .` and never a
+  directory add (directory adds sweep in untracked files).
+<!-- shared:git-safety-core end -->
+- Never push.
 
 ## Report
 
