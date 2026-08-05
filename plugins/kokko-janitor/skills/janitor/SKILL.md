@@ -78,7 +78,9 @@ Keep the JSON output; it feeds Phase 2 prompts and the final report.
    `git worktree add $WORKTREE_BASE/<lang>-<check> -b janitor/<lang>-<check>`
 3. One subagent per worktree, all in parallel. The total MUST equal
    languages x checks — never collapse languages into one subagent. Each
-   subagent runs `/<check> <lang>`, fixes ALL issues found, commits in
+   subagent runs `/kokko-code-quality:<check> <lang>` (always the
+   namespaced form — bare `/<check>` only resolves while no other plugin
+   claims the same short name), fixes ALL issues found, commits in
    small logical `fix(<check>): ...` commits staging explicit file paths.
    A check that finds nothing is a valid result — commit nothing, report
    "clean". Never manufacture work or relax tool configuration to create
@@ -93,8 +95,8 @@ only orders candidates and always puts some file near 1.0).
 1. For each of the first N `candidate: true` files (N from `--top`,
    default 3), create a worktree + branch
    (`janitor/design-<module>`) and spawn a subagent running
-   `/design <path>` with the candidate's metric evidence pasted into the
-   prompt. The design skill produces a verdict (`god-module` or
+   `/kokko-janitor:design <path>` with the candidate's metric evidence
+   pasted into the prompt. The design skill produces a verdict (`god-module` or
    `cohesive`) and, for god modules, a concrete split plan written to
    `.janitor/design-plan-<stem>.md` inside the worktree. "Cohesive — no
    action" is a valid and common outcome.
@@ -105,8 +107,8 @@ only orders candidates and always puts some file near 1.0).
    final report, marked rejected.
 3. **Collect plans BEFORE any cleanup**: copy every
    `.janitor/design-plan-*.md` from the design worktrees into the main
-   checkout's `.janitor/` directory. `git worktree remove --force`
-   destroys worktree contents — a plan not copied out first is lost. The
+   checkout's `.janitor/` directory. Removing a worktree destroys its
+   contents — a plan not copied out first is lost. The
    copies are untracked artifacts ignored via the target repo's
    `.git/info/exclude` (the design skill ensures that entry exists);
    leave them for the user.
@@ -141,8 +143,12 @@ only orders candidates and always puts some file near 1.0).
 
 ### Cleanup
 
-Remove all worktrees and delete all `janitor/*` branches (skip-merge
-branches with zero commits are simply deleted).
+Remove all worktrees with plain `git worktree remove` — never `--force`
+(guard environments deny it, and a refusal means the worktree still holds
+uncollected files: inspect, collect, retry). Delete all `janitor/*`
+branches with `git branch -d` — merged and zero-commit branches both
+delete cleanly; a `-d` refusal means unmerged commits and is a finding to
+report, never a reason for `-D`.
 
 ## Final Report
 

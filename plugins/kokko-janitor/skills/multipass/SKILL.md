@@ -16,7 +16,9 @@ nothing after a pass that fixed everything is evidence of convergence.
 Parse `$ARGUMENTS` as an ordered plan:
 
 - `<N> <target>` — N passes of a target. A target is either a slash
-  command/skill (`/kokko-janitor:janitor`, `/security py`) or a prompt
+  command/skill (`/kokko-janitor:janitor`, `/kokko-code-quality:security py`
+  — prefer the namespaced form; a bare short name like `/security` only
+  resolves while no other plugin claims it) or a prompt
   file path (`prompts/deployed-validation.md`)
 - `then` chains further targets: `2 prompts/a.md then 2 prompts/b.md`
   runs a1, a2, b1, b2 — strictly in that order
