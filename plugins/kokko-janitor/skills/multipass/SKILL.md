@@ -45,12 +45,15 @@ Run `--pre` first if given. Then, for each pass in order:
 
 ### Ground rules to pass to every subagent, verbatim
 
-- Never `git stash`, `git clean`, `git reset --hard`, `git rebase`,
-  `git restore`, or `git checkout <ref> -- <path>`. A dirty tree that is
-  not yours: stop and report.
+<!-- shared:git-safety-core start -- byte-identical across the janitor, multipass, and design skills; scripts/check-git-rules-sync.sh enforces it -->
+- Never `git stash`, `git clean`, `git reset`, `git rebase`, `git restore`,
+  or `git checkout <ref> -- <path>` to alter or clear working-tree state —
+  uncommitted tracked work destroyed that way is unrecoverable. A dirty tree
+  that is not yours: STOP and report.
+- Stage explicit individual file paths only — never `git add .` and never a
+  directory add (directory adds sweep in untracked files).
+<!-- shared:git-safety-core end -->
 - Never push unless the target's own instructions explicitly require it.
-- Stage explicit individual file paths only — never `git add .` and never
-  a directory add.
 - Finding NOTHING is a valid, reportable result. Do not manufacture work,
   do not relax tool or test configuration to create findings.
 

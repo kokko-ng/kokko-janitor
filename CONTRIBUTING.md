@@ -7,6 +7,7 @@ python3 -m pytest tests/ -q        # test suite (real throwaway git repos, no mo
 pre-commit install                 # once; then hooks run on every commit
 pre-commit run --all-files         # ruff + ruff-format, markdownlint, shellcheck, hygiene
 bash scripts/check-marketplace-sync.sh
+bash scripts/check-git-rules-sync.sh   # shared git-safety block across the three skills
 ```
 
 Dev dependencies are pinned in `requirements-dev.txt`
