@@ -61,14 +61,19 @@ working directory RESETS between Bash calls — never rely on `cd`
 persisting. Brief each subagent to use absolute paths everywhere and
 `git -C "$WORKTREE"` for every git command:
 
+Always invoke the check skills by their namespaced name
+(`/kokko-code-quality:security`, not `/security`) — the bare short name
+only resolves while no other plugin defines the same generic word, and a
+collision silently runs the wrong skill.
+
 ```text
-Task: Run /security py in worktree
+Task: Run /kokko-code-quality:security py in worktree
 Prompt: WORKTREE=$WORKTREE_BASE/py-security (absolute path — your cwd
         resets between Bash calls, so never rely on cd; reference files
         by absolute path under "$WORKTREE" and run every git command as
-        git -C "$WORKTREE" ...). Run /security py against that
-        worktree. Fix ALL issues found, commit incrementally with
-        git -C "$WORKTREE" commit.
+        git -C "$WORKTREE" ...). Run /kokko-code-quality:security py
+        against that worktree. Fix ALL issues found, commit
+        incrementally with git -C "$WORKTREE" commit.
 ```
 
 Launch all subagents in parallel for maximum efficiency.
@@ -126,9 +131,15 @@ If merge conflicts occur:
 ## Step 7: Cleanup
 
 ```bash
-# Remove all worktrees
+# Remove all worktrees. Plain `git worktree remove` — NEVER --force. Plain
+# remove refuses while a worktree still has modified or untracked files;
+# that refusal is a signal to inspect and copy out anything that matters
+# (a design plan not yet collected, an uncommitted fix), not to force.
+# --force deletes those files along with the worktree, and guard
+# environments (kokko-devcontainer) deny it outright.
 for dir in "$WORKTREE_BASE"/*; do
-  git worktree remove "$dir" --force
+  git worktree remove "$dir" \
+    || echo "warning: $dir not removable — inspect its leftover files, collect what matters, then retry"
 done
 
 # Remove base directory. rmdir refuses a non-empty directory — if it
@@ -137,10 +148,14 @@ done
 rmdir "$WORKTREE_BASE" || echo "warning: $WORKTREE_BASE not empty — inspect before deleting"
 
 # Delete temporary branches. --format strips the current-branch '*'
-# marker, and -D is required: janitor/* branches were merged --no-ff so
-# -d considers them unmerged and refuses. xargs -r (skip empty input) is
-# a GNU extension; modern BSD/macOS xargs accepts it as a no-op.
-git branch --list 'janitor/*' --format='%(refname:short)' | xargs -r git branch -D
+# marker. -d suffices: janitor/* branches were merged --no-ff (their tips
+# are reachable from the target branch) or carry no commits at all, and
+# -d deletes both cleanly. If -d refuses, the branch holds unmerged
+# commits nobody merged — report that as a finding; never escalate to -D,
+# which guard environments deny and which deletes the branch's reflog
+# with it. xargs -r (skip empty input) is a GNU extension; modern
+# BSD/macOS xargs accepts it as a no-op.
+git branch --list 'janitor/*' --format='%(refname:short)' | xargs -r git branch -d
 ```
 
 ## Step 8: Final Validation
