@@ -135,8 +135,7 @@ If merge conflicts occur:
 # remove refuses while a worktree still has modified or untracked files;
 # that refusal is a signal to inspect and copy out anything that matters
 # (a design plan not yet collected, an uncommitted fix), not to force.
-# --force deletes those files along with the worktree, and guard
-# environments (kokko-devcontainer) deny it outright.
+# --force deletes those files along with the worktree, unrecoverably.
 for dir in "$WORKTREE_BASE"/*; do
   git worktree remove "$dir" \
     || echo "warning: $dir not removable — inspect its leftover files, collect what matters, then retry"
@@ -152,9 +151,9 @@ rmdir "$WORKTREE_BASE" || echo "warning: $WORKTREE_BASE not empty — inspect be
 # are reachable from the target branch) or carry no commits at all, and
 # -d deletes both cleanly. If -d refuses, the branch holds unmerged
 # commits nobody merged — report that as a finding; never escalate to -D,
-# which guard environments deny and which deletes the branch's reflog
-# with it. xargs -r (skip empty input) is a GNU extension; modern
-# BSD/macOS xargs accepts it as a no-op.
+# which deletes those commits and the branch's reflog with them.
+# xargs -r (skip empty input) is a GNU extension; modern BSD/macOS xargs
+# accepts it as a no-op.
 git branch --list 'janitor/*' --format='%(refname:short)' | xargs -r git branch -d
 ```
 
@@ -192,8 +191,7 @@ the artifact directories as the durable fix.
 If the working tree is dirty, STOP and report to the user. Do NOT run
 `git stash`, `git reset`, `git restore`, or `git checkout -- <path>` to
 clear it — uncommitted tracked changes overwritten by those commands are
-unrecoverable, and environments with git safety hooks will block them
-anyway. The user decides whether to commit the work (explicit file
+unrecoverable. The user decides whether to commit the work (explicit file
 paths, never `git add .` or a directory add) or abort the run.
 
 ### Subagent Fails

@@ -151,11 +151,10 @@ only orders candidates and always puts some file near 1.0).
 ### Cleanup
 
 Remove all worktrees with plain `git worktree remove` — never `--force`
-(guard environments deny it, and a refusal means the worktree still holds
-uncollected files: inspect, collect, retry). Delete all `janitor/*`
-branches with `git branch -d` — merged and zero-commit branches both
-delete cleanly; a `-d` refusal means unmerged commits and is a finding to
-report, never a reason for `-D`.
+(a refusal means the worktree still holds uncollected files: inspect,
+collect, retry). Delete all `janitor/*` branches with `git branch -d` —
+merged and zero-commit branches both delete cleanly; a `-d` refusal means
+unmerged commits and is a finding to report, never a reason for `-D`.
 
 ## Final Report
 
